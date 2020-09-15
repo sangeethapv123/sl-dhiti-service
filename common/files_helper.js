@@ -7,5 +7,6 @@ module.exports = {
     assessment: "assessment",
     googleCloud: "GC",
     azure: "azure",
-    aws: "aws"
+    aws: "aws",
+    survey: "survey"
 }

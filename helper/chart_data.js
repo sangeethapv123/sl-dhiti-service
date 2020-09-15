@@ -8,23 +8,33 @@ const default_no_of_assessment_submissions_threshold = 3;
 const default_entity_score_api_threshold = 5;
 
 //function for instance observation final response creation
-exports.instanceReportChart = async function (data,reportType) {
-    var obj;
-    var multiSelectArray = [];
-    var matrixArray = [];
-    var order = "questionExternalId";
+exports.instanceReportChart = async function (data,reportType = "") {
+    let obj;
+    let multiSelectArray = [];
+    let matrixArray = [];
+    let order = "questionExternalId";
     let actualData = data;
+    let type;
 
     try {
-        // obj is the response object which we are sending as a API response   
-        obj = {
-            entityName: data[0].event.schoolName,
-            observationName: data[0].event.observationName,
-            observationId: data[0].event.observationId,
-            entityType: data[0].event.entityType,
-            entityId: data[0].event.school,
-            districtName: data[0].event.districtName,
-            response: []
+        if (reportType && reportType == filesHelper.survey) {
+            type = filesHelper.survey;
+            obj = {
+                solutionName: data[0].event.solutionName,
+                response: []
+            }
+        }
+        else {
+            type = filesHelper.observation;
+            obj = {
+                entityName: data[0].event.schoolName,
+                observationName: data[0].event.observationName,
+                observationId: data[0].event.observationId,
+                entityType: data[0].event.entityType,
+                entityId: data[0].event.school,
+                districtName: data[0].event.districtName,
+                response: []
+            }
         }
         
 
@@ -118,7 +128,7 @@ exports.instanceReportChart = async function (data,reportType) {
 
          //loop the keys of matrix array
          await Promise.all(matrixRes.map(async ele => {
-            let matrixResponse = await matrixResponseObjectCreateFunc(matrixResult[ele])
+            let matrixResponse = await matrixResponseObjectCreateFunc(matrixResult[ele], type)
             obj.response.push(matrixResponse);
 
         }))
@@ -181,49 +191,59 @@ async function instanceMultiselectFunc(data) {
 
 //Function for entity Observation and observation report's response creation
 exports.entityReportChart = async function (data,entityId,entityName,reportType) {
-    var obj;
-    var multiSelectArray = [];
-    var textArray = [];
-    var radioArray = [];
-    var sliderArray = [];
-    var numberArray = [];
-    var dateArray = [];
-    var noOfSubmissions = [];
-    var matrixArray = [];
+    let obj;
+    let multiSelectArray = [];
+    let textArray = [];
+    let radioArray = [];
+    let sliderArray = [];
+    let numberArray = [];
+    let dateArray = [];
+    let noOfSubmissions = [];
+    let matrixArray = [];
     let actualData = data;
+    let type;
 
     try {
 
-        // obj is the response object which we are sending as a API response  
-        if (data[0].event.solutionId) {
-
+        if (reportType == filesHelper.survey) {
+            type = filesHelper.survey;
             obj = {
-                solutionId: data[0].event.solutionId,
                 solutionName: data[0].event.solutionName,
-                entityType: data[0].event.entityType,
-                entityId: entityId,
-                entityName: data[0].event[entityName + "Name"],
                 response: []
             }
-
-
         }
         else {
-            obj = {
-                observationId: data[0].event.observationId,
-                observationName: data[0].event.observationName,
-                entityType: data[0].event.entityType,
-                entityId: entityId,
-                entityName:  data[0].event[entityName + "Name"],
-                districtName: data[0].event.districtName,
-                response: []
+            type = filesHelper.observation;
+            if (data[0].event.solutionId) {
+
+                obj = {
+                    solutionId: data[0].event.solutionId,
+                    solutionName: data[0].event.solutionName,
+                    entityType: data[0].event.entityType,
+                    entityId: entityId,
+                    entityName: data[0].event[entityName + "Name"],
+                    response: []
+                }
+
+
+            }
+            else {
+                obj = {
+                    observationId: data[0].event.observationId,
+                    observationName: data[0].event.observationName,
+                    entityType: data[0].event.entityType,
+                    entityId: entityId,
+                    entityName: data[0].event[entityName + "Name"],
+                    districtName: data[0].event.districtName,
+                    response: []
+                }
             }
         }
 
         await Promise.all(data.map(element => {
-            if (noOfSubmissions.includes(element.event.observationSubmissionId)) {
+            if (noOfSubmissions.includes(element.event[type + "SubmissionId"])) {
             } else {
-                noOfSubmissions.push(element.event.observationSubmissionId);
+                noOfSubmissions.push(element.event[type + "SubmissionId"]);
             }
 
             if (element.event.questionResponseType == "text" && element.event.instanceParentResponsetype != "matrix") {
@@ -276,7 +296,7 @@ exports.entityReportChart = async function (data,entityId,entityName,reportType)
         let textRes = Object.keys(textResult);
         //loop the keys and construct a response object for text questions
         await Promise.all(textRes.map(async ele => {
-            let textResponse = await responseObjectCreateFunc(textResult[ele])
+            let textResponse = await responseObjectCreateFunc(textResult[ele],type)
             obj.response.push(textResponse);
 
         }));
@@ -284,21 +304,21 @@ exports.entityReportChart = async function (data,entityId,entityName,reportType)
         let sliderRes = Object.keys(sliderResult);
         //loop the keys and construct a response object for slider questions
         await Promise.all(sliderRes.map(async ele => {
-            let sliderResp = await responseObjectCreateFunc(sliderResult[ele])
+            let sliderResp = await responseObjectCreateFunc(sliderResult[ele],type)
             obj.response.push(sliderResp);
         }));
 
         let numberRes = Object.keys(numberResult);
         //loop the keys and construct a response object for slider questions
         await Promise.all(numberRes.map(async ele => {
-            let numberResp = await responseObjectCreateFunc(numberResult[ele])
+            let numberResp = await responseObjectCreateFunc(numberResult[ele],type)
             obj.response.push(numberResp);
         }));
          
         let dateRes = Object.keys(dateResult);
         //loop the keys and construct a response object for slider questions
         await Promise.all(dateRes.map(async ele => {
-            let dateResp = await responseObjectCreateFunc(dateResult[ele])
+            let dateResp = await responseObjectCreateFunc(dateResult[ele],type)
             obj.response.push(dateResp);
         }))
 
@@ -312,14 +332,14 @@ exports.entityReportChart = async function (data,entityId,entityName,reportType)
          let multiSelectRes = Object.keys(multiSelectResult);
          //loop the keys and construct a response object for multiselect questions
         await Promise.all(multiSelectRes.map(async ele => {
-            let multiSelectResp = await multiSelectObjectCreateFunc(multiSelectResult[ele],noOfSubmissions)
+            let multiSelectResp = await multiSelectObjectCreateFunc(multiSelectResult[ele],noOfSubmissions,type)
             obj.response.push(multiSelectResp);
         }))
 
         let matrixRes = Object.keys(matrixResult);
         //loop the keys of matrix array
         await Promise.all(matrixRes.map(async ele => {
-           let matrixResponse = await matrixResponseObjectCreateFunc(matrixResult[ele])
+           let matrixResponse = await matrixResponseObjectCreateFunc(matrixResult[ele], type)
            obj.response.push(matrixResponse);
 
        }))
@@ -344,7 +364,7 @@ exports.entityReportChart = async function (data,entityId,entityName,reportType)
 
 
 //matrix questions response object creation
-async function matrixResponseObjectCreateFunc(data){
+async function matrixResponseObjectCreateFunc(data,type){
     let noOfInstances = [];
     let order = "instanceParentExternalId";
     
@@ -352,18 +372,21 @@ async function matrixResponseObjectCreateFunc(data){
      let questionObject = data.sort(custom_sort);
      let question = questionObject[questionObject.length-1].event.instanceParentQuestion;
 
-    var obj = {
+    let obj = {
         order:data[0].event[order],
         question: question,
         responseType: data[0].event.instanceParentResponsetype,
         answers: [],
         chart: {},
-        instanceQuestions:[],
-        criteriaName: data[0].event.instanceParentCriteriaName,
-        criteriaId: data[0].event.instanceParentCriteriaId
+        instanceQuestions:[]
+    }
+    
+    if (data[0].event.instanceParentCriteriaId) {
+        obj.criteriaName = data[0].event.instanceParentCriteriaName;
+        obj.criteriaId = data[0].event.instanceParentCriteriaId
     }
    
-    let groupBySubmissionId = await groupArrayByGivenField(data, "observationSubmissionId");
+    let groupBySubmissionId = await groupArrayByGivenField(data, type + "SubmissionId");
     let submissionKeys = Object.keys(groupBySubmissionId);
 
     await Promise.all(submissionKeys.map(async ele => {
@@ -396,7 +419,7 @@ async function matrixResponseObjectCreateFunc(data){
 
      //loop the keys and construct a response object for multiselect questions
      await Promise.all(matrixRes.map(async ele => {
-        let matrixResponse = await matrixResponseObject(matrixResult[ele],instanceIdArrayData)
+        let matrixResponse = await matrixResponseObject(matrixResult[ele],instanceIdArrayData,type)
         obj.instanceQuestions.push(matrixResponse);
 
     }))
@@ -409,11 +432,11 @@ async function matrixResponseObjectCreateFunc(data){
 
 
 //Create Response object for matrix type instance questions
-async function matrixResponseObject(data,noOfInstances){
+async function matrixResponseObject(data,noOfInstances,type){
 
     if(data[0].event.questionResponseType == "text" || data[0].event.questionResponseType == "slider" || data[0].event.questionResponseType == "number" || data[0].event.questionResponseType == "date"){
         let answers = [];
-        let responseObj = await responseObjectCreateFunc(data);
+        let responseObj = await responseObjectCreateFunc(data,type);
          
         if(responseObj.responseType == "date") {
           await Promise.all(responseObj.answers.map(element => {
@@ -432,7 +455,7 @@ async function matrixResponseObject(data,noOfInstances){
     }
     else if(data[0].event.questionResponseType == "multiselect"){
             
-        let responseObj = await multiSelectObjectCreateFunc(data,noOfInstances);
+        let responseObj = await multiSelectObjectCreateFunc(data,noOfInstances,type);
         return responseObj;
     }
 }
@@ -445,7 +468,7 @@ async function responseObjectCreateFunc(data) {
     //let remarks = [];
     
     //group the data based on submission id
-    let groupBySubmissionId = await groupArrayByGivenField(data,"observationSubmissionId");
+    let groupBySubmissionId = await groupArrayByGivenField(data, type + "SubmissionId");
 
     let submissionKeys = Object.keys(groupBySubmissionId);
 
@@ -590,7 +613,7 @@ async function radioObjectCreateFunc(data,noOfSubmissions) {
 }
 
 //function to create response object for multiselect questions (Entiry Report)
-async function multiSelectObjectCreateFunc(data,noOfSubmissions) {
+async function multiSelectObjectCreateFunc(data,noOfSubmissions,type) {
     try {
     let dataArray = [];
     let answerArray = [];
@@ -655,7 +678,7 @@ async function multiSelectObjectCreateFunc(data,noOfSubmissions) {
     }
 
     // loop through objects and find remarks
-    let groupArrayBySubmissions = await groupArrayByGivenField(data, "observationSubmissionId");
+    let groupArrayBySubmissions = await groupArrayByGivenField(data, type + "SubmissionId");
 
     let submissionKeysArray = Object.keys(groupArrayBySubmissions);
 
